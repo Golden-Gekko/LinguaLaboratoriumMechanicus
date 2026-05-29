@@ -1,59 +1,56 @@
 import argparse
+import json
+import sys
 from collections import Counter
 from datetime import datetime
-import json
-import os
-import sys
+from pathlib import Path
 from tqdm import tqdm
 
 from extractors import (
     extract_text_from_epub, extract_text_from_fb2, extract_text_from_pdf)
 
-EXTENSION_TO_EXTRACTOR = {}
-EXTENSION_TO_EXTRACTOR['.fb2'] = extract_text_from_fb2
-EXTENSION_TO_EXTRACTOR['.epub'] = extract_text_from_epub
-EXTENSION_TO_EXTRACTOR['.pdf'] = extract_text_from_pdf
-LOG_DIR = 'logs'
+EXTENSION_TO_EXTRACTOR = {
+    '.fb2': extract_text_from_fb2,
+    '.epub': extract_text_from_epub,
+    '.pdf': extract_text_from_pdf
+}
+
+LOG_DIR = Path('logs')
 
 
-def process_book_files(input_dir, output_dir=None, allowed_ext=None):
+def process_book_files(
+        input_dir: Path,
+        output_dir: Path | None = None,
+        allowed_ext: list[str] = None
+) -> None:
     error_logs = []
     counter = Counter()
     ext_counter = Counter()
 
     if output_dir is None:
-        output_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'JSON')
-    os.makedirs(output_dir, exist_ok=True)
+        output_dir = Path(__file__).parent / 'JSON'
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if allowed_ext is None:
         allowed_extensions = set(EXTENSION_TO_EXTRACTOR.keys())
     else:
-        allowed_extensions = []
+        allowed_extensions = set()
         for ext in allowed_ext:
             ext = ext.lower()
             if not ext.startswith('.'):
-                ext = '.' + ext
-            if EXTENSION_TO_EXTRACTOR.get(ext, None):
-                allowed_extensions.append(ext)
+                ext = f'.{ext}'
+            if ext in EXTENSION_TO_EXTRACTOR:
+                allowed_extensions.add(ext)
             else:
-                print(
-                    f'Warning: неподдерживаемое расширение: "{ext}"'
-                )
-        allowed_extensions = set(allowed_extensions)
+                print(f'Warning: неподдерживаемое расширение: "{ext}"')
 
-    files_list = []
-    for root, _, files in os.walk(input_dir):
-        for file in files:
-            _, ext = os.path.splitext(file.lower())
-            if ext in allowed_extensions:
-                files_list.append((root, file))
+    files_list = [
+        f for f in input_dir.rglob('*')
+        if f.is_file() and f.suffix.lower() in allowed_extensions
+    ]
 
-    pbar = tqdm(total=len(files_list), desc='Обработка')
-
-    for root, file in files_list:
-        file_path = os.path.join(root, file)
-        _, ext = os.path.splitext(file.lower())
+    for file_path in tqdm(files_list, desc='Обработка'):
+        ext = file_path.suffix.lower()
         extractor = EXTENSION_TO_EXTRACTOR.get(ext)
 
         try:
@@ -61,17 +58,13 @@ def process_book_files(input_dir, output_dir=None, allowed_ext=None):
             if text is None:
                 error_logs.append(f'Warning: Не найден текст в "{file_path}"')
                 counter['warnings'] += 1
-                pbar.update(1)
                 continue
 
-            output_file_path = os.path.join(
-                output_dir,
-                f'{os.path.splitext(file)[0]}.json'
-            )
+            output_file_path = output_dir / f'{file_path.stem}.json'
 
             data = {
-                'parent_folder': os.path.basename(root),
-                'file_name': file,
+                'parent_folder': file_path.parent.name,
+                'file_name': file_path.name,
                 'text': text
             }
 
@@ -85,23 +78,25 @@ def process_book_files(input_dir, output_dir=None, allowed_ext=None):
             counter['errors'] += 1
             error_logs.append(f'Ошибка при обработке "{file_path}": {e}')
 
-        pbar.update(1)
-
-    pbar.close()
-
     if error_logs:
-        os.makedirs(LOG_DIR, exist_ok=True)
-
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_file_path = os.path.join(LOG_DIR, f'log_{timestamp}.txt')
-        print('\n--- Log ---')
-        with open(log_file_path, 'w', encoding='utf-8') as file:
+        log_file_path = LOG_DIR / f'log_{timestamp}.txt'
+
+        with open(log_file_path, 'w', encoding='utf-8') as log_file:
+            log_file.write('\n'.join(error_logs) + '\n')
+
+        if len(error_logs) < 10:
+            print('\n--- Log ---')
             for log in error_logs:
                 print(log)
-                file.write(log + '\n')
+        else:
+            print(f'Лог ошибок сохранён в: {log_file_path}')
 
-    msg = '; '.join(f'{key.capitalize()}: {counter[key]}' for key in counter)
-    print('-' * len(msg), msg, '-' * len(msg), sep='\n')
+
+    if counter:
+        msg = '; '.join(f'{key.capitalize()}: {counter[key]}' for key in counter)
+        print('-' * len(msg), msg, '-' * len(msg), sep='\n')
 
     if ext_counter:
         ext_msg = 'Обработано файлов: ' + ', '.join(
@@ -133,16 +128,13 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.isdir(args.input):
-        print(
-            f'Error: директория "{args.input}" не существует.',
-            file=sys.stderr
-        )
+    if not Path(args.input).is_dir():
+        print(f'Error: директория "{args.input}" не существует.', file=sys.stderr)
         sys.exit(1)
 
     process_book_files(
-        input_dir=args.input,
-        output_dir=args.output,
+        input_dir=Path(args.input),
+        output_dir=Path(args.output) if args.output else None,
         allowed_ext=args.extensions
     )
 

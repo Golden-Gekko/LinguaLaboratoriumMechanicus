@@ -1,15 +1,14 @@
-from collections import Counter
-import os
 import sys
+from collections import Counter
+from pathlib import Path
 
 
-def analyze_file_extensions(root_dir):
+def analyze_file_extensions(root_dir: Path) -> Counter:
     ext_counter = Counter()
 
-    for _, _, filenames in os.walk(root_dir):
-        for filename in filenames:
-            _, ext = os.path.splitext(filename)
-            ext = ext.lower()
+    for file_path in root_dir.rglob('*'):
+        if file_path.is_file():
+            ext = file_path.suffix.lower()
             if ext:
                 ext_counter[ext] += 1
             else:
@@ -24,9 +23,9 @@ def main():
             'Использование: python analyze_extensions.py <path_to_directory>')
         sys.exit(1)
 
-    target_dir = sys.argv[1]
+    target_dir = Path(sys.argv[1])
 
-    if not os.path.isdir(target_dir):
+    if not target_dir.is_dir():
         print(f'Error: {target_dir} не является директорией.')
         sys.exit(1)
 
