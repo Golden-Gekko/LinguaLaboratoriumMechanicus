@@ -7,5 +7,5 @@ __all__ = [
     'FeedForward',
     'LinguaLaboratoriumMechanicus',
     'MultiHeadAttention',
-    'TransformerBlock'
+    'TransformerBlock',
 ]
