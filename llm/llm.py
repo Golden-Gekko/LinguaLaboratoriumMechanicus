@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from . import TransformerBlock
+from .transformer import TransformerBlock
 
 
 class LinguaLaboratoriumMechanicus(nn.Module):
