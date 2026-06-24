@@ -1,0 +1,1 @@
+https://huggingface.co/datasets/John6666/forum1/blob/29c81af5d2c73d54d715e05928a80d701d5bd8c2/how_to_add_custom_llm_arch_transformers_1.md?code=true#L6

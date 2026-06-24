@@ -12,6 +12,7 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import AutoTokenizer
+from transformers.optimization import get_cosine_schedule_with_warmup
 
 from dataset.dataset import W40kDataset
 from llm import LinguaLaboratoriumMechanicus
@@ -41,6 +42,8 @@ class Config:
     eval_temperature: float = 0.8
     eval_top_k: int = 40
     force_reprocess: bool = False
+    warmup_steps: int = 500
+    grad_clip: float = 1.0
     hub_repo_id: str | None = None
 
 
@@ -48,8 +51,10 @@ def train_one_epoch(
     model: torch.nn.Module,
     dataloader: DataLoader,
     optimizer: AdamW,
+    scheduler,
     vocab_size: int,
     device: str,
+    grad_clip: float,
 ) -> list[float]:
     model.train()
     losses: list[float] = []
@@ -62,8 +67,14 @@ def train_one_epoch(
         loss = F.cross_entropy(logits.view(-1, vocab_size), targets.view(-1))
 
         loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
         optimizer.step()
         optimizer.zero_grad()
+
+        if scheduler is not None:
+            scheduler.step()
 
         losses.append(loss.item())
 
@@ -85,7 +96,7 @@ def run_eval(model, tokenizer, cfg: Config) -> None:
 
 
 def _push_to_hub(model, cfg: Config) -> None:
-    print(f'\n--- Push to Hub: {cfg.hub_repo_id} ---')
+    print(f'\n\n=== Загрузка на HF: {cfg.hub_repo_id} ===')
 
     hf_config = LinguaLaboratoriumMechanicusConfig(
         vocab_size=cfg.vocab_size,
@@ -105,9 +116,7 @@ def _push_to_hub(model, cfg: Config) -> None:
     hf_config.save_pretrained(tmp)
     hf_model.save_pretrained(tmp)
 
-    shutil.copytree(
-        'llm', tmp / 'llm', ignore=shutil.ignore_patterns('__pycache__', '*.pyc')
-    )
+    shutil.copytree('llm', tmp / 'llm', ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
 
     tk_path = Path(cfg.tokenizer_path)
     for f in ['tokenizer_config.json', 'tokenizer.json', 'special_tokens_map.json']:
@@ -147,17 +156,29 @@ def train(cfg: Config) -> None:
     ).to(cfg.device)
 
     optimizer = AdamW(model.parameters(), lr=cfg.lr)
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer=optimizer, num_warmup_steps=cfg.warmup_steps,
+        num_training_steps=len(dataloader) * cfg.max_epochs,
+    )
 
     for epoch in range(cfg.max_epochs):
         start = time.perf_counter()
-        losses = train_one_epoch(model, dataloader, optimizer, cfg.vocab_size, cfg.device)
+        losses = train_one_epoch(
+            model=model,
+            dataloader=dataloader,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            vocab_size=cfg.vocab_size,
+            device=cfg.device,
+            grad_clip=cfg.grad_clip)
         elapsed = time.perf_counter() - start
 
+        cur_lr = scheduler.get_last_lr()[0]
         avg_loss = sum(losses) / len(losses)
 
         torch.save(losses, save_dir / f'loss_epoch{epoch + 1:02d}.pt')
         print(f'\n=== Эпоха {epoch + 1}/{cfg.max_epochs} [{elapsed:.1f}s] ===')
-        print(f'Loss: {avg_loss:.4f}')
+        print(f'AvgLoss: {avg_loss:.4f}  LR: {cur_lr:.2e}')
 
         run_eval(model, tokenizer, cfg)
 
@@ -187,8 +208,9 @@ if __name__ == '__main__':
     parser.add_argument('--json_data_dir', type=str)
     parser.add_argument('--save_dir', type=str)
     parser.add_argument('--force_reprocess', action='store_true')
-    parser.add_argument('--hub-repo-id', type=str,
-                        help='Например: username/llm-w40k')
+    parser.add_argument('--hub-repo-id', type=str)
+    parser.add_argument('--warmup-steps', type=int)
+    parser.add_argument('--grad-clip', type=float)
     args = parser.parse_args()
 
     cfg = Config()
