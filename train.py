@@ -208,9 +208,9 @@ if __name__ == '__main__':
     parser.add_argument('--json_data_dir', type=str)
     parser.add_argument('--save_dir', type=str)
     parser.add_argument('--force_reprocess', action='store_true')
-    parser.add_argument('--hub-repo-id', type=str)
-    parser.add_argument('--warmup-steps', type=int)
-    parser.add_argument('--grad-clip', type=float)
+    parser.add_argument('--hub_repo_id', type=str)
+    parser.add_argument('--warmup_steps', type=int)
+    parser.add_argument('--grad_clip', type=float)
     args = parser.parse_args()
 
     cfg = Config()
