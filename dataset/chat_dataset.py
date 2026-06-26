@@ -81,19 +81,7 @@ class ChatQADataset(Dataset):
 
         input_blocks: list[list[int]] = []
         target_blocks: list[list[int]] = []
-        current_ids: list[int] = []
-        current_labels: list[int] = []
-        dialogs_total = 0
         skipped = 0
-
-        def flush() -> None:
-            if not current_ids:
-                return
-            pad_len = self.max_length - len(current_ids)
-            ids = current_ids + [self.pad_token_id] * pad_len
-            labs = current_labels + [-100] * pad_len
-            input_blocks.append(ids[:-1])
-            target_blocks.append(labs[1:])
 
         for json_path in tqdm(json_files, desc='Обработка файлов'):
             if json_path.name == 'example.json':
@@ -103,30 +91,25 @@ class ChatQADataset(Dataset):
                 dialogs = json.load(f)
 
             for dialog in dialogs:
-                dialogs_total += 1
                 input_ids, labels = self._build_sequence(dialog['messages'])
 
                 if len(input_ids) > self.max_length:
                     skipped += 1
                     continue
 
-                if current_ids and len(current_ids) + len(input_ids) > self.max_length:
-                    flush()
-                    current_ids = []
-                    current_labels = []
-
-                current_ids.extend(input_ids)
-                current_labels.extend(labels)
-
-        flush()
+                pad_len = self.max_length - len(input_ids)
+                ids = input_ids + [self.pad_token_id] * pad_len
+                labs = labels + [-100] * pad_len
+                input_blocks.append(ids[:-1])
+                target_blocks.append(labs[:-1])
 
         if not input_blocks:
             raise ValueError(
-                f'Нет блоков после packing (max_length={self.max_length}). '
-                f'Пропущено длинных диалогов: {skipped}',
+                f'Нет диалогов в пределах max_length={self.max_length}. '
+                f'Пропущено: {skipped}',
             )
 
-        print(f'Диалогов: {dialogs_total} | Блоков: {len(input_blocks)}')
+        print(f'Загружено диалогов: {len(input_blocks)}')
         if skipped:
             print(f'Пропущено длинных диалогов: {skipped}')
 
@@ -200,12 +183,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--json_path',
         type=str,
-        default='dataset/qa_data',
+        default='./json_data',
         help='Путь к JSON файлам')
     parser.add_argument(
         '--tokenizer_path',
         type=str,
-        default='tokenizer/tokenizer_chat_config',
+        default='./my_tokenizer',
         help='Путь к токенизатору')
     parser.add_argument(
         '--max_length',
