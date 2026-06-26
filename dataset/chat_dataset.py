@@ -76,38 +76,57 @@ class ChatQADataset(Dataset):
         return input_ids, labels
 
     def _preprocess_data(self, json_dir_path):
-        json_files = list(Path(json_dir_path).glob('*.json'))
+        json_files = sorted(Path(json_dir_path).glob('*.json'))
         print(f'Найдено {len(json_files)} JSON файлов')
 
-        input_blocks = []
-        target_blocks = []
+        input_blocks: list[list[int]] = []
+        target_blocks: list[list[int]] = []
+        current_ids: list[int] = []
+        current_labels: list[int] = []
+        dialogs_total = 0
         skipped = 0
 
+        def flush() -> None:
+            if not current_ids:
+                return
+            pad_len = self.max_length - len(current_ids)
+            ids = current_ids + [self.pad_token_id] * pad_len
+            labs = current_labels + [-100] * pad_len
+            input_blocks.append(ids[:-1])
+            target_blocks.append(labs[1:])
+
         for json_path in tqdm(json_files, desc='Обработка файлов'):
+            if json_path.name == 'example.json':
+                continue
+
             with open(json_path, 'r', encoding='utf-8') as f:
                 dialogs = json.load(f)
 
             for dialog in dialogs:
+                dialogs_total += 1
                 input_ids, labels = self._build_sequence(dialog['messages'])
 
                 if len(input_ids) > self.max_length:
                     skipped += 1
                     continue
 
-                pad_len = self.max_length - len(input_ids)
-                input_ids.extend([self.pad_token_id] * pad_len)
-                labels.extend([-100] * pad_len)
+                if current_ids and len(current_ids) + len(input_ids) > self.max_length:
+                    flush()
+                    current_ids = []
+                    current_labels = []
 
-                input_blocks.append(input_ids[:-1])
-                target_blocks.append(labels[1:])
+                current_ids.extend(input_ids)
+                current_labels.extend(labels)
+
+        flush()
 
         if not input_blocks:
             raise ValueError(
-                f'Нет диалогов в пределах max_length={self.max_length}. '
-                f'Пропущено: {skipped}',
+                f'Нет блоков после packing (max_length={self.max_length}). '
+                f'Пропущено длинных диалогов: {skipped}',
             )
 
-        print(f'Загружено диалогов: {len(input_blocks)}')
+        print(f'Диалогов: {dialogs_total} | Блоков: {len(input_blocks)}')
         if skipped:
             print(f'Пропущено длинных диалогов: {skipped}')
 
@@ -164,7 +183,7 @@ def main(
         total = targets[0].numel()
         print(f'  Токенов с лоссом: {trained}/{total}')
 
-        input_text = tokenizer.decode(inputs[0][:20].tolist())
+        input_text = tokenizer.decode(inputs[0][:80].tolist())
         print(f'  Пример input:  {repr(input_text)}')
 
         if batch_idx == 1:
@@ -181,12 +200,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--json_path',
         type=str,
-        default='./json_data',
+        default='dataset/qa_data',
         help='Путь к JSON файлам')
     parser.add_argument(
         '--tokenizer_path',
         type=str,
-        default='./my_tokenizer',
+        default='tokenizer/tokenizer_chat_config',
         help='Путь к токенизатору')
     parser.add_argument(
         '--max_length',
