@@ -146,5 +146,10 @@ Thumbs.db
 #trash
 logs/
 Warhammer_40k/
-JSON/
+report/
 checkpoints/
+checkpoints_sft/
+hf_export_chat/
+hf_export/
+*.png
+build_qa_from_corpus.py
