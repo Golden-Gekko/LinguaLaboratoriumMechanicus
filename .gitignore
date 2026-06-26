@@ -149,7 +149,6 @@ Warhammer_40k/
 report/
 checkpoints/
 checkpoints_sft/
-hf_export_chat/
-hf_export/
+hf_export*/
 *.png
 build_qa_from_corpus.py
