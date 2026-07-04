@@ -19,20 +19,14 @@ class W40kDataset(Dataset):
         self.max_length = max_length
         self.sep_token_id = tokenizer.convert_tokens_to_ids('<|endoftext|>')
 
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-
         self.processed_dir = Path(json_path) / 'processed'
         self.processed_dir.mkdir(exist_ok=True)
-
         self.data_file = self.processed_dir / 'tokenized_data.npy'
-        self.index_file = self.processed_dir / 'block_index.npy'
 
         if force_reprocess or not self.data_file.exists():
             self._preprocess_data(json_path)
 
         self.token_blocks = np.load(self.data_file, mmap_mode='r')
-        self.block_indices = np.load(self.index_file)
 
     def _preprocess_data(self, json_dir_path):
         all_token_ids = []
@@ -54,22 +48,15 @@ class W40kDataset(Dataset):
         print(f'Всего в корпусе данных {total_tokens:,} токенов')
 
         blocks = []
-        indices = []
-
         for i in tqdm(range(num_blocks), desc='Создание блоков данных'):
             start = i * self.max_length
             end = start + self.max_length
-            block = all_token_ids[start:end]
-
-            if len(block) == self.max_length:
-                blocks.append(block)
-                indices.append((start, end))
+            blocks.append(all_token_ids[start:end])
 
         np.save(self.data_file, np.array(blocks, dtype=np.int32))
-        np.save(self.index_file, np.array(indices, dtype=np.int64))
 
     def __len__(self):
-        return len(self.block_indices)
+        return len(self.token_blocks)
 
     def __getitem__(self, idx):
         block = self.token_blocks[idx]
