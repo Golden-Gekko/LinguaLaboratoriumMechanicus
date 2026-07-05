@@ -20,7 +20,7 @@ class TransformerBlock(nn.Module):
             n_heads=n_heads,
             context_length=context_length,
             dropout=dropout,
-            qvk_bias=qvk_bias,
+            qkv_bias=qvk_bias,
         )
         self.ffn = FeedForward(emb_dim=emb_dim, dropout=dropout)
         self.ln_1 = nn.LayerNorm(emb_dim)

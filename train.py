@@ -32,7 +32,7 @@ class Config:
     n_heads: int = 12
     max_context_length: int = 1024
     dropout: float = 0.1
-    qvk_bias: bool = False
+    qkv_bias: bool = False
     batch_size: int = 4
     lr: float = 3e-4
     max_epochs: int = 10
@@ -105,7 +105,7 @@ def _push_to_hub(model, cfg: Config) -> None:
         n_heads=cfg.n_heads,
         max_context_length=cfg.max_context_length,
         dropout=cfg.dropout,
-        qvk_bias=cfg.qvk_bias,
+        qvk_bias=cfg.qkv_bias,
     )
     hf_model = LLMForCausalLM(hf_config)
     hf_model.load_state_dict(model.state_dict(), strict=True)
@@ -152,7 +152,7 @@ def train(cfg: Config) -> None:
         n_heads=cfg.n_heads,
         max_context_length=cfg.max_context_length,
         dropout=cfg.dropout,
-        qvk_bias=cfg.qvk_bias,
+        qkv_bias=cfg.qkv_bias,
     ).to(cfg.device)
 
     optimizer = AdamW(model.parameters(), lr=cfg.lr)

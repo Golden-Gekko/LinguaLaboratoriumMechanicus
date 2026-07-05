@@ -13,7 +13,7 @@ class LinguaLaboratoriumMechanicus(nn.Module):
         n_heads: int,
         max_context_length: int = 1024,
         dropout: float = 0.1,
-        qvk_bias: bool = False
+        qkv_bias: bool = False
     ):
         super().__init__()
 
@@ -22,7 +22,7 @@ class LinguaLaboratoriumMechanicus(nn.Module):
             'n_heads': n_heads,
             'context_length': max_context_length,
             'dropout': dropout,
-            'qvk_bias': qvk_bias
+            'qvk_bias': qkv_bias
         }
 
         self.vocab_size = vocab_size

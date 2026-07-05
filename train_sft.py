@@ -89,7 +89,7 @@ def load_pretrained(
         n_heads=cfg.n_heads,
         max_context_length=cfg.max_context_length,
         dropout=cfg.dropout,
-        qvk_bias=cfg.qvk_bias,
+        qkv_bias=cfg.qvk_bias,
     )
     model.load_state_dict(old_state, strict=True)
     return resize_vocab(model, vocab_size)

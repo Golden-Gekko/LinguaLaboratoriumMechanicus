@@ -9,7 +9,7 @@ class MultiHeadAttention(nn.Module):
         n_heads: int,
         context_length: int,
         dropout: float = 0.1,
-        qvk_bias: bool = False
+        qkv_bias: bool = False
     ):
         super().__init__()
         if emb_dim % n_heads != 0:
@@ -21,9 +21,9 @@ class MultiHeadAttention(nn.Module):
 
         # Матрица для всех голов Q, K, V
         self.qkv_proj = nn.Linear(
-            self.model_dim, 3 * self.model_dim, bias=qvk_bias)
+            self.model_dim, 3 * self.model_dim, bias=qkv_bias)
         self.out_proj = nn.Linear(
-            self.model_dim, self.model_dim, bias=qvk_bias)
+            self.model_dim, self.model_dim, bias=qkv_bias)
 
         self.dropout = nn.Dropout(dropout)
 
