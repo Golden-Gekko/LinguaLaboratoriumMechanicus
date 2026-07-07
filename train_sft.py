@@ -27,7 +27,7 @@ class Config:
     n_heads: int = 12
     max_context_length: int = 1024
     dropout: float = 0.1
-    qvk_bias: bool = False
+    qkv_bias: bool = False
     batch_size: int = 4
     lr: float = 1e-5
     max_epochs: int = 15
@@ -89,7 +89,7 @@ def load_pretrained(
         n_heads=cfg.n_heads,
         max_context_length=cfg.max_context_length,
         dropout=cfg.dropout,
-        qkv_bias=cfg.qvk_bias,
+        qkv_bias=cfg.qkv_bias,
     )
     model.load_state_dict(old_state, strict=True)
     return resize_vocab(model, vocab_size)
