@@ -44,9 +44,6 @@ def generate(
             probs = F.softmax(logits_last, dim=-1)
             next_id = torch.multinomial(probs, num_samples=1).unsqueeze(0)
         else:
-            logits_last = top_k_filtering(
-                logits_last.unsqueeze(0), top_k,
-            ).squeeze(0)
             next_id = torch.argmax(logits_last, dim=-1, keepdim=True).unsqueeze(0)
         generated = torch.cat([generated, next_id], dim=-1)
         input_ids = torch.cat([input_ids, next_id], dim=-1)
