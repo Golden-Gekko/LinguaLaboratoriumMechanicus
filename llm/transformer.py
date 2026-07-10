@@ -12,7 +12,7 @@ class TransformerBlock(nn.Module):
         n_heads: int,
         context_length: int,
         dropout: float = 0.1,
-        qvk_bias: bool = False
+        qkv_bias: bool = False
     ):
         super().__init__()
         self.attn = MultiHeadAttention(
@@ -20,7 +20,7 @@ class TransformerBlock(nn.Module):
             n_heads=n_heads,
             context_length=context_length,
             dropout=dropout,
-            qkv_bias=qvk_bias,
+            qkv_bias=qkv_bias,
         )
         self.ffn = FeedForward(emb_dim=emb_dim, dropout=dropout)
         self.ln_1 = nn.LayerNorm(emb_dim)

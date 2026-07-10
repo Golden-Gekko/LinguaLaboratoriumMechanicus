@@ -22,7 +22,7 @@ class LinguaLaboratoriumMechanicus(nn.Module):
             'n_heads': n_heads,
             'context_length': max_context_length,
             'dropout': dropout,
-            'qvk_bias': qkv_bias
+            'qkv_bias': qkv_bias
         }
 
         self.vocab_size = vocab_size
