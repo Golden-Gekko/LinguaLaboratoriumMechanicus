@@ -14,12 +14,12 @@ from transformers import AutoTokenizer
 
 from dataset.chat_dataset import ChatQADataset, format_messages
 from llm import LinguaLaboratoriumMechanicus
-
+from llm.generation import generate
 
 @dataclass
 class Config:
     tokenizer_path: str = 'tokenizer/tokenizer_chat_config'
-    json_data_dir: str = 'Warhammer_40k/parsed/lor/qa_data'
+    json_data_dir: str = 'dataset/json_data/qa_data'
     pretrained_checkpoint: str = 'checkpoints/checkpoint_epoch10.pt'
     save_dir: str = 'checkpoints_sft'
     emb_dim: int = 768
@@ -33,9 +33,8 @@ class Config:
     max_epochs: int = 15
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
     eval_questions: tuple[str, ...] = (
-        # 'Кто такой Император?',
-        # 'Что такое Эра Раздора и как она повлияла на межзвездные путешествия человечества?',
-        'Кто такой Малькадор и какова была его роль при Императоре?',
+        'Что такое Гибельный шторм и как он повлиял на ход войны?',
+        'Что такое Эра Раздора и как она повлияла на межзвездные путешествия человечества?',
     )
     eval_max_new_tokens: int = 80
     eval_temperature: float = 0.4
@@ -132,8 +131,6 @@ def train_one_epoch(
 
 @torch.no_grad()
 def run_eval(model, tokenizer, cfg: Config) -> None:
-    from llm.generation import generate
-
     model.eval()
     mode = 'greedy' if cfg.eval_temperature < 1e-5 else f'T={cfg.eval_temperature}'
     print(f'--- Проверка генерацией (чат, {mode}) ---')

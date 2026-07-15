@@ -37,7 +37,10 @@ class Config:
     lr: float = 3e-4
     max_epochs: int = 10
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
-    eval_prompts: tuple[str] = ('Кто такой Император?', )
+    eval_prompts: tuple[str, ...] = (
+        'В 31-м тысячелетии Империум',
+        'Гибельный шторм — это',
+    )
     eval_max_new_tokens: int = 100
     eval_temperature: float = 0.8
     eval_top_k: int = 40
