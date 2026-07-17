@@ -12,7 +12,7 @@ class LinguaLaboratoriumMechanicusConfig(PretrainedConfig):
         n_heads: int = 12,
         max_context_length: int = 1024,
         dropout: float = 0.1,
-        qvk_bias: bool = False,
+        qkv_bias: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -23,7 +23,7 @@ class LinguaLaboratoriumMechanicusConfig(PretrainedConfig):
         self.n_heads = n_heads
         self.max_context_length = max_context_length
         self.dropout = dropout
-        self.qvk_bias = qvk_bias
+        self.qkv_bias= qkv_bias
 
         # Алиасы для GenerationMixin
         self.num_hidden_layers = n_layers

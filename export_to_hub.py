@@ -19,7 +19,7 @@ QKV_BIAS = False
 def main(checkpoint: Path, tokenizer_path: Path, out_dir: Path) -> None:
     ckpt = torch.load(checkpoint, map_location='cpu', weights_only=True)
     state = ckpt['model_state_dict']
-    vocab_size = ckpt['vocab_size']
+    vocab_size = ckpt.get('vocab_size') or state['token_emb.weight'].shape[0]
 
     model = LinguaLaboratoriumMechanicus(
         vocab_size=vocab_size, emb_dim=EMB_DIM, n_layers=N_LAYERS, n_heads=N_HEADS,
@@ -28,7 +28,7 @@ def main(checkpoint: Path, tokenizer_path: Path, out_dir: Path) -> None:
 
     hf_config = LinguaLaboratoriumMechanicusConfig(
         vocab_size=vocab_size, emb_dim=EMB_DIM, n_layers=N_LAYERS, n_heads=N_HEADS,
-        max_context_length=MAX_CONTEXT, dropout=DROPOUT, qvk_bias=QKV_BIAS)
+        max_context_length=MAX_CONTEXT, dropout=DROPOUT, qkv_bias=QKV_BIAS)
 
     hf_model = LLMForCausalLM(hf_config)
     hf_model.load_state_dict(model.state_dict(), strict=True)

@@ -32,7 +32,7 @@ class LLMForCausalLM(PreTrainedModel, GenerationMixin):
                 n_heads=config.n_heads,
                 context_length=config.max_context_length,
                 dropout=config.dropout,
-                qvk_bias=config.qvk_bias,
+                qkv_bias=config.qkv_bias,
             )
             for _ in range(config.n_layers)
         ])
