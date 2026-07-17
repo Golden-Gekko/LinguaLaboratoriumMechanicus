@@ -1,13 +1,10 @@
 import argparse
-import shutil
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
-from huggingface_hub import HfApi
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -16,9 +13,7 @@ from transformers.optimization import get_cosine_schedule_with_warmup
 
 from dataset.dataset import W40kDataset
 from llm import LinguaLaboratoriumMechanicus
-from llm.configuration_llm import LinguaLaboratoriumMechanicusConfig
 from llm.generation import generate
-from llm.modeling_llm import LLMForCausalLM
 
 
 @dataclass
@@ -47,7 +42,6 @@ class Config:
     force_reprocess: bool = False
     warmup_steps: int = 500
     grad_clip: float = 1.0
-    hub_repo_id: str | None = None
 
 
 def train_one_epoch(
@@ -96,42 +90,6 @@ def run_eval(model, tokenizer, cfg: Config) -> None:
             device=cfg.device,
         )
         print(f'Вопрос: {prompt}. Нагенерировано: {output}')
-
-
-def _push_to_hub(model, cfg: Config) -> None:
-    print(f'\n\n=== Загрузка на HF: {cfg.hub_repo_id} ===')
-
-    hf_config = LinguaLaboratoriumMechanicusConfig(
-        vocab_size=cfg.vocab_size,
-        emb_dim=cfg.emb_dim,
-        n_layers=cfg.n_layers,
-        n_heads=cfg.n_heads,
-        max_context_length=cfg.max_context_length,
-        dropout=cfg.dropout,
-        qvk_bias=cfg.qkv_bias,
-    )
-    hf_model = LLMForCausalLM(hf_config)
-    hf_model.load_state_dict(model.state_dict(), strict=True)
-
-    tmp = Path(tempfile.mkdtemp())
-    LinguaLaboratoriumMechanicusConfig.register_for_auto_class()
-    hf_model.register_for_auto_class('AutoModelForCausalLM')
-    hf_config.save_pretrained(tmp)
-    hf_model.save_pretrained(tmp)
-
-    shutil.copytree('llm', tmp / 'llm', ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-
-    tk_path = Path(cfg.tokenizer_path)
-    for f in ['tokenizer_config.json', 'tokenizer.json', 'special_tokens_map.json']:
-        src = tk_path / f
-        if src.exists():
-            shutil.copy2(src, tmp / f)
-
-    api = HfApi()
-    api.create_repo(cfg.hub_repo_id, exist_ok=True)
-    api.upload_folder(repo_id=cfg.hub_repo_id, folder_path=str(tmp))
-    shutil.rmtree(tmp)
-    print(f'Готово: https://huggingface.co/{cfg.hub_repo_id}')
 
 
 def train(cfg: Config) -> None:
@@ -194,9 +152,6 @@ def train(cfg: Config) -> None:
 
     print('Обучение завершено.')
 
-    if cfg.hub_repo_id:
-        _push_to_hub(model, cfg)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -211,7 +166,6 @@ if __name__ == '__main__':
     parser.add_argument('--json_data_dir', type=str)
     parser.add_argument('--save_dir', type=str)
     parser.add_argument('--force_reprocess', action='store_true')
-    parser.add_argument('--hub_repo_id', type=str)
     parser.add_argument('--warmup_steps', type=int)
     parser.add_argument('--grad_clip', type=float)
     args = parser.parse_args()

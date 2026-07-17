@@ -42,7 +42,7 @@ uv run python utils/extract_text_to_json.py \
 
 | Параметр | Обязательный | По умолчанию | Описание |
 |----------|:------------:|--------------|----------|
-| `--input` | да | — | Директория с исходными файлами |
+| `--input` | да | - | Директория с исходными файлами |
 | `--output` | нет | `utils/JSON` | Куда сохранять JSON |
 | `--extensions` | нет | все поддерживаемые | Фильтр расширений, например: `--extensions fb2 epub` |
 
@@ -62,7 +62,7 @@ uv run python tokenizer/train_tokenizer.py \
 
 | Параметр | Обязательный | По умолчанию | Описание |
 |----------|:------------:|--------------|----------|
-| `--data_dir` | да | — | Директория с JSON из шага 1 |
+| `--data_dir` | да | - | Директория с JSON из шага 1 |
 | `--vocab_size` | нет | `50257` | Целевой размер словаря |
 | `--min_frequency` | нет | `2` | Минимальная частота токена для включения в словарь |
 | `--save_dir` | нет | `tokenizer_config` | Куда сохранить токенизатор |
@@ -113,7 +113,6 @@ uv run python train.py \
 | `--warmup_steps` | `500` | Шаги линейного разогрева LR |
 | `--grad_clip` | `1.0` | Максимальная норма градиента |
 | `--force_reprocess` | `false` | Пересоздать кэш датасета |
-| `--hub_repo_id` | — | ID репозитория на Hugging Face Hub для загрузки модели после обучения |
 
 После каждой эпохи сохраняется `checkpoints/checkpoint_epochNN.pt` и запускается тестовая генерация.
 
@@ -203,8 +202,41 @@ uv run python train_sft.py \
 | `--force_reprocess` | `false` | Пересоздать кэш датасета |
 | `--eval_temperature` | `0.4` | Температура при тестовой генерации после эпохи |
 
-После каждой эпохи — тестовая генерация ответов на вопросы из `eval_questions` (задаются в коде `train_sft.py`).
+После каждой эпохи - тестовая генерация ответов на вопросы из `eval_questions` (задаются в коде `train_sft.py`).
 
+## Загрузка моделей на Hugging Face Hub
+
+Для авторизации надо создать токен: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) с правом write.
+
+```bash
+uvx --from huggingface_hub hf auth login
+```
+
+### Подготовка и загрузка модели
+
+`export_to_hub.py` готовит HF-папку из `.pt`. Загрузка - через `hf upload`.
+
+```bash
+# CPT
+uv run python export_to_hub.py \
+  --checkpoint checkpoints/<ИМЯ ЧЕКПОИНТА>.pt \
+  --tokenizer_path tokenizer/tokenizer_config \
+  --out_dir hf_export
+uvx --from huggingface_hub hf upload <ВАШ НИКНЕЙМ>/<ВАШ РЕПОЗИТОРИЙ> hf_export
+
+# SFT (instruct)
+uv run python export_to_hub.py \
+  --checkpoint checkpoints_sft/<ИМЯ ЧЕКПОИНТА>.pt \
+  --tokenizer_path tokenizer/tokenizer_chat_config \
+  --out_dir hf_export_instruct
+uvx --from huggingface_hub hf upload <ВАШ НИКНЕЙМ>/<ВАШ РЕПОЗИТОРИЙ> hf_export_instruct
+```
+
+| Параметр | Обязательный | Описание |
+|----------|:------------:|----------|
+| `--checkpoint` | да | Путь к `.pt` чекпоинту |
+| `--tokenizer_path` | да | Директория токенизатора |
+| `--out_dir` | нет (`hf_export`) | Куда сохранить HF-папку |
 
 ## Полный пайплайн
 
@@ -222,4 +254,8 @@ uv run python tokenizer/extend_chat_tokens.py
 uv run python train_sft.py \
   --pretrained_checkpoint checkpoints/checkpoint_epoch10.pt \
   --json_data_dir path/to/qa_data
+
+# Hub
+uv run python export_to_hub.py --checkpoint checkpoints/checkpoint_epoch10.pt --tokenizer_path tokenizer/tokenizer_config
+uvx --from huggingface_hub hf upload YOUR/REPO hf_export
 ```
