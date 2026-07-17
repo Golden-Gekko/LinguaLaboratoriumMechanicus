@@ -3,6 +3,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from transformers import GenerationMixin, PreTrainedModel
+from transformers.cache_utils import Cache
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from .configuration_llm import LinguaLaboratoriumMechanicusConfig
@@ -50,10 +51,10 @@ class LLMForCausalLM(PreTrainedModel, GenerationMixin):
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        past_key_values: Optional = None,
-        use_cache: Optional[bool] = None,
+        input_ids: torch.LongTensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        past_key_values: Cache | None = None,
+        use_cache: bool | None = None,
         **kwargs,
     ) -> CausalLMOutputWithPast:
         if input_ids is None:
