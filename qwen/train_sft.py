@@ -25,7 +25,7 @@ class SftConfig:
     json_data_dir: str = 'dataset/json_data/qa_data'
     save_dir: str = 'checkpoints_qwen/sft'
     max_context_length: int = 2048
-    batch_size: int = 4
+    batch_size: int = 2
     lr: float = 1e-5
     max_epochs: int = 3
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -49,7 +49,7 @@ def run_eval_sft(
     print('--- Проверка генерацией (SFT, greedy) ---')
     for question in cfg.eval_questions:
         messages = [{'role': 'user', 'content': question}]
-        inputs = tokenizer.apply_chat_template(
+        input_ids = tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
             tokenize=True,
@@ -58,13 +58,13 @@ def run_eval_sft(
         ).to(cfg.device)
 
         output_ids = model.generate(
-            **inputs,
+            input_ids,
             max_new_tokens=cfg.eval_max_new_tokens,
             do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
         )
-        prompt_len = inputs['input_ids'].shape[1]
+        prompt_len = input_ids.shape[1]
         text = tokenizer.decode(
             output_ids[0, prompt_len:],
             skip_special_tokens=True,
@@ -120,8 +120,8 @@ def train(cfg: SftConfig) -> None:
         print(f'\n=== Эпоха {epoch + 1}/{cfg.max_epochs} [{elapsed:.1f}s] ===')
         print(f'AvgLoss: {avg_loss:.4f}  LR: {cur_lr:.2e}')
 
-        run_eval_sft(model, tokenizer, cfg)
         save_checkpoint(model, tokenizer, save_dir, loss=avg_loss, epoch=epoch + 1)
+        run_eval_sft(model, tokenizer, cfg)
 
     print('SFT-обучение завершено.')
 
