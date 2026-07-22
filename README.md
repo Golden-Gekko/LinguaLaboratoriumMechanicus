@@ -212,7 +212,9 @@ uv run python train_sft.py \
 uvx hf auth login --token hf_xxxx
 ```
 
-### Подготовка и загрузка модели
+Перед `hf upload` в папке модели должен быть `README.md` (карточка с YAML; у дообученных моделей — поле `base_model`).
+
+### Своя модель
 
 `export_to_hub.py` готовит HF-папку из `.pt`. Загрузка - через `hf upload`.
 
@@ -237,3 +239,17 @@ uvx hf upload <ВАШ НИКНЕЙМ>/<ВАШ РЕПОЗИТОРИЙ> hf_export_
 | `--checkpoint` | да | Путь к `.pt` чекпоинту |
 | `--tokenizer_path` | да | Директория токенизатора |
 | `--out_dir` | нет (`hf_export`) | Куда сохранить HF-папку |
+
+### Qwen
+
+Чекпоинты уже сохраняются в HF-формате. Файл `training_state.pt` надо исключить, т.к. это не часть модели, параметры оптимизатора.
+
+```bash
+uvx hf upload <ВАШ НИКНЕЙМ>/<ВАШ РЕПОЗИТОРИЙ> \
+  checkpoints_qwen/cpt/epoch_XX \
+  --exclude training_state.pt
+
+uvx hf upload <ВАШ НИКНЕЙМ>/<ВАШ РЕПОЗИТОРИЙ> \
+  checkpoints_qwen/sft/epoch_XX \
+  --exclude training_state.pt
+```
